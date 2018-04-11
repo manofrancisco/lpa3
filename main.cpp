@@ -1,13 +1,15 @@
 #include <iostream>
+#include <stdio.h>
 #include <vector>
 #include <iomanip>
+#include <algorithm>
 
 using namespace std;
 
 class Point{
 public:
     double x, y;
-    Point(float x, float y) : x(x), y(y) {}
+    Point(double x, double y) : x(x), y(y) {}
 };
 
 
@@ -22,52 +24,62 @@ struct less_than_key
 vector<Point> points;
 int num_points, max_points;
 double best;
-
+double max_x;
+double smaller_loss;
+double total;
 
 void input(){
     double x,y;
     cin >> num_points >> max_points;
-    cout << num_points << " " << max_points<<endl;
-    double max = 0.0;
     for(int i=0;i<num_points;i++) {
         cin >> x >> y;
         Point p = Point(x,y);
         points.push_back(p);
-        max = (((x*y)>max)? x*y:max);
     }
 }
 
-void func(bool use,int index,double last_used_x,double max_x, double current,int num_used){
-    if(index == num_points - 1 || num_used == max_points){
-        current += ((use)? (points[index].x - last_used_x)*points[index].y :0 );
-        best = ((current > best)? current:best);
+void f(bool use,int index,double last_used_x, double current,int num_used,double loss) {
+    if((num_points - 1 - index) < max_points - num_used ) return;
+    if (index == num_points - 1 || num_used == max_points) {
+        if (use) {
+            current = current + ((points[index].x - last_used_x) * points[index].y);
+            last_used_x = points[index].x;
+        }else{
+            loss = loss + (points[index].x - last_used_x)*(points[index].y);
+        }
+        if(current > best){
+            best = current;
+            smaller_loss = total - current;
+        }
         return;
-    }
-    current += ((use)? (points[index].x - last_used_x)*points[index].y :0 );
-    double upper_bound = current + (max_x - points[index].x )*points[index].y;
-    last_used_x = ((use)? points[index].x:last_used_x);
-    if(upper_bound < best) return;
-
-    func(false,index+1,last_used_x,max_x,current,num_used);
-    if(num_used>=max_points){
-        func(true,index+1,last_used_x,max_x,current,num_used+1);
+    } else {
+        if (use) {
+            current = current + ((points[index].x - last_used_x) * points[index].y);
+            last_used_x = points[index].x;
+        }else{
+            loss = loss + (points[index].x - last_used_x)*(points[index].y-points[index+1].y);
+        }
+        if(loss >= smaller_loss) return;
+        f(true,index+1,last_used_x,current,num_used+1,loss);
+        f(false,index+1,last_used_x,current,num_used,loss);
     }
 }
 
 
 int main() {
+    total = 0.0;
     input();
     sort(points.begin(), points.end(), less_than_key());
-    best = 0.0;
-    for(int i=0;i<num_points;i++) {
-        printf("%.12f %.12f\n",points[i].x,points[i].y );
+    total = points[0].x*points[0].y;
+    for(int i = 1; i < (int)points.size();i++){
+        total += (points[i].x-points[i-1].x)*points[i].y;
     }
-    if(max_points != 0){
-        cout<<(int)points.size()-1;
-        double max_x = points[(int)points.size()-1].x;
-        printf("\n\n%.12f\n\n\n",max_x );
-        func(false,0,0.0,max_x,0.0,0);
-        func(true,0,0.0,max_x,0.0,0);
+    best = 0.0;
+    smaller_loss = total;
+    if(max_points != 0 && num_points != 0){
+        max_x = points[(int)points.size()-1].x;
+        f(false,0,0.0,0.0,0,0.0);
+        f(true,0,0.0,0.0,1,0.0);
     }
     printf("%.12f\n",best );
     return 0;
